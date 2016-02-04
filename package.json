@@ -9,6 +9,7 @@
     "jupyter-js-services": "^0.5.1",
     "phosphor-arrays": "^1.0.6",
     "phosphor-codemirror": "0.0.1",
+    "phosphor-properties": "^2.0.0",
     "phosphor-signaling": "^1.2.0",
     "phosphor-widget": "^1.0.0-rc.1"
   },
