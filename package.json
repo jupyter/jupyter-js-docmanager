@@ -4,7 +4,14 @@
   "description": "Document manager for Jupyter",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
-  "dependencies": {},
+  "dependencies": {
+    "codemirror": "^5.11.0",
+    "jupyter-js-services": "^0.5.1",
+    "phosphor-arrays": "^1.0.6",
+    "phosphor-codemirror": "0.0.1",
+    "phosphor-signaling": "^1.2.0",
+    "phosphor-widget": "^1.0.0-rc.1"
+  },
   "devDependencies": {
     "css-loader": "^0.23.1",
     "expect.js": "^0.3.1",

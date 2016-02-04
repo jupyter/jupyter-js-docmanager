@@ -13,12 +13,12 @@ PORT = 8765
 
 class MainPageHandler(tornado.web.RequestHandler):
 
-    def initialize(self, ws_url):
-        self.ws_url = ws_url
+    def initialize(self, base_url):
+        self.base_url = base_url
 
     def get(self):
         return self.render("index.html", static=self.static_url,
-                           ws_url=self.ws_url)
+                           base_url=self.base_url)
 
 
 def main(argv):
@@ -38,7 +38,7 @@ def main(argv):
         print(line)
         if 'Jupyter Notebook is running at:' in line:
             host = re.search('http(.*?)$', line).groups()[0]
-            ws_url = 'ws' + host
+            base_url = 'http' + host
             break
 
     while 1:
@@ -60,7 +60,7 @@ def main(argv):
     thread.start()
 
     handlers = [
-        (r"/", MainPageHandler, {'ws_url': ws_url}),
+        (r"/", MainPageHandler, {'base_url': base_url}),
         (r'/(.*)', tornado.web.StaticFileHandler,
          {'path': '.'}),
     ]
