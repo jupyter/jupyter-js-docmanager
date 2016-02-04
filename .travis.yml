@@ -1,0 +1,16 @@
+language: node_js
+node_js:
+- '0.12'
+sudo: false
+env:
+  matrix:
+  - GROUP=
+  global:
+  - GH_REF: github.com/jupyter/jupyter-js-docmanager.git
+  - secure: IEU6ghKQtUFBwwevLIyrp9xopyKiBqwWY4nipvZq7DqF+fWjg9A1k19BRAg0X4bnDAInzC0Wo7G4R3Hi43oJXdRJq+XmuhLF1JZm7Y8H2hJF2KehgV1TO8omhExO3uIMdf6fqEKkuNzB1WDZ2KIST8Ra85yol0/wkoG/7KlNoy9mkFE0/lEiq71LZeEHY8q+HnGCbnufTZ5IFdB5O9qz1/pP69860EigW7FaGzpIVq0KWsw24Ydt8fMRujGiPUpfAZFi4kobP5FELDauNv22lElTs6O2AsYIv0OH+9nuKdXMRjEwUUCSPmreTa0NqC7XkCieOu2kzgPBNNp/9EhhcxhmNjRMUWjlvQpOgy3j2+wnfXwWh3VhSQsbOQB1BrQU++ri5/Oj9gG4z27Uc0BXUtkgiaHp7GE8LHzmdrrEUDj1VqQwkukOO17yBI9WFcaxV+7BDIYSXkiCF1FC5BhYuWE/mpjROnBrvarnMyS2ZsZz1XUOk3SObaHxccDU1TXap2jm+LMnInnoehe2jA+eQVmt9gVYyZjLraoP3w8vK4CSn9FnfQj7lGAyEnqMx2qUV1/yBW/IvviiAwkU6jVL95LEnBB682kCUIwNNBm4iD9Cjry5OKFMHKDaqhSnfa0s2Xp1Fph/8tEE9e82iJksPHMG2ByKqaeuU8OQ0VQ9GpM=
+install:
+- bash ./scripts/travis_install.sh
+script:
+- bash ./scripts/travis_script.sh
+after_success:
+- bash ./scripts/travis_after_success.sh
