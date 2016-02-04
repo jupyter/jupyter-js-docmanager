@@ -2,8 +2,8 @@
 *.user
 .DS_Store
 node_modules/
-npm-debug.log
 test/build
+test/coverage
 lib/
 docs
 example/build
