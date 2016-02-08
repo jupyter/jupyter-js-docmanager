@@ -11,16 +11,16 @@ import {
 } from 'phosphor-keymap';
 
 import {
+  FileHandler, DocumentManager
+} from 'jupyter-js-docmanager';
+
+import {
   ContentsManager
 } from 'jupyter-js-services';
 
 import {
   getBaseUrl
 } from 'jupyter-js-utils';
-
-import {
-  FileHandler, DocumentManager
-} from '../../lib/index';
 
 
 function main(): void {
@@ -58,8 +58,6 @@ function main(): void {
   contentsManager.get('index.html').then(contents => {
     docManager.open(contents);
   });
-
-
 
 }
 

@@ -1,8 +1,8 @@
 
 module.exports = {
-  entry: './example/build/index.js',
+  entry: './build/index.js',
   output: {
-    path: './example/build',
+    path: './build',
     filename: 'bundle.js'
   },
   node: {
