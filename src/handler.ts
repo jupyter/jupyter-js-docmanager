@@ -43,6 +43,12 @@ import {
 
 
 /**
+ * The class name added to a dirty documents.
+ */
+const DIRTY_CLASS = 'jp-mod-dirty';
+
+
+/**
  * An implementation of a file handler.
  */
 export
@@ -135,7 +141,10 @@ abstract class AbstractFileHandler implements IMessageFilter {
     }
     let model = AbstractFileHandler.modelProperty.get(widget);
     return this.getState(widget).then(contents => {
-      return this.manager.save(model.path, contents);
+      return this.manager.save(model.path, contents).then(contents => {
+        widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+        return contents;
+      });
     });
   }
 
@@ -148,7 +157,9 @@ abstract class AbstractFileHandler implements IMessageFilter {
     }
     let model = AbstractFileHandler.modelProperty.get(widget);
     return this.getContents(model).then(contents => {
-      return this.setState(widget, contents);
+      return this.setState(widget, contents).then(() => {
+        widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+      });
     });
   }
 
@@ -256,9 +267,9 @@ class FileHandler extends AbstractFileHandler {
    * Create the widget from an `IContentsModel`.
    */
   protected createWidget(model: IContentsModel): Widget {
-    let widget = new JupyterCodeMirrorWidget() as Widget;
+    let widget = new JupyterCodeMirrorWidget();
     widget.title.text = model.path.split('/').pop();
-    return widget;
+    return widget as Widget;
   }
 
   /**
@@ -272,6 +283,12 @@ class FileHandler extends AbstractFileHandler {
     let mirror = widget as CodeMirrorWidget;
     mirror.editor.getDoc().setValue(model.content);
     loadModeByFileName(mirror.editor, model.name);
+    mirror.editor.on('change', () => {
+      let className = widget.title.className;
+      if (className.indexOf(DIRTY_CLASS) === -1) {
+        widget.title.className += ` ${DIRTY_CLASS}`;
+      }
+    });
     return Promise.resolve(void 0);
   }
 
@@ -303,7 +320,6 @@ namespace AbstractFileHandler {
     name: 'model',
     value: null
   });
-
 
   /**
    * A signal finished when a file handler has finished populating a
