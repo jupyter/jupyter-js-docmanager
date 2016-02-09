@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "name": "jupyter-docmanager-example",
+  "dependencies": {
+    "jupyter-js-docmanager": "file:..",
+    "jupyter-js-services": "^0.5.1",
+    "jupyter-js-utils": "^0.3.1",
+    "phosphor-dockpanel": "^0.9.6",
+    "phosphor-keymap": "^0.7.0"
+  },
+  "scripts": {
+    "postinstall": "npm dedupe"
+  }
+}
