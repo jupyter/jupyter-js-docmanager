@@ -154,6 +154,10 @@ class DocumentManager {
   private _open(handler: AbstractFileHandler, model: IContentsModel): Widget {
     let widget = handler.open(model);
     handler.activeWidget = widget;
+    // Clear all other active widgets.
+    for (let h of this._handlers) {
+      if (h !== handler) handler.activeWidget = null;
+    }
     this.openRequested.emit(widget);
     return widget;
   }
