@@ -27,12 +27,6 @@ import {
 export
 const DOCUMENT_CLASS = 'jp-Document';
 
-/**
- * The class name added to focused widgets.
- */
-export
-const FOCUS_CLASS = 'jp-mod-focus';
-
 
 /**
  * A document manager for Jupyter.
@@ -159,6 +153,7 @@ class DocumentManager {
    */
   private _open(handler: AbstractFileHandler, model: IContentsModel): Widget {
     let widget = handler.open(model);
+    handler.activeWidget = widget;
     this.openRequested.emit(widget);
     return widget;
   }
@@ -172,13 +167,12 @@ class DocumentManager {
       let widget = arrays.find(h.widgets,
         w => { return w.isVisible && w.node.contains(event.target as HTMLElement); });
       if (widget === this._currentWidget) {
-        return;
+        continue;
       } else if (widget) {
-        if (this._currentWidget) this._currentWidget.removeClass(FOCUS_CLASS);
         this._currentWidget = widget;
         this._currentHandler = h;
-        widget.addClass(FOCUS_CLASS);
-        return;
+      } else {
+        h.activeWidget = null;
       }
     }
   }

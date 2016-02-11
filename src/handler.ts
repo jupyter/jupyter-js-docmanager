@@ -86,6 +86,28 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
+   * Get the active widget for the handler (can be null).
+   *
+   * #### Notes
+   * This is intended to be managed by the DocumentManager and can be
+   * set to `null` to indicate no active widget.
+   */
+  get activeWidget(): Widget {
+    return AbstractFileHandler.activeWidgetProperty.get(this);
+  }
+
+  /**
+   * Set the active widget for the handler (can be null).
+   *
+   * #### Notes
+   * This is intended to be managed by the DocumentManager and can be
+   * set to `null` to indicate no active widget.
+   */
+  set activeWidget(widget: Widget) {
+    AbstractFileHandler.activeWidgetProperty.set(this, widget);
+  }
+
+  /**
    * Get the contents manager used by the handler.
    *
    * #### Notes
@@ -101,6 +123,13 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   get finished(): ISignal<AbstractFileHandler, IContentsModel> {
     return AbstractFileHandler.finishedSignal.bind(this);
+  }
+
+  /**
+   * A signal emitted when the active widget changes.
+   */
+  get activeChanged(): ISignal<AbstractFileHandler, IChangedArgs<Widget>> {
+    return AbstractFileHandler.activeWidgetSignal.bind(this);
   }
 
   /**
@@ -135,7 +164,8 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Save the widget contents.
    */
-  save(widget: Widget): Promise<IContentsModel> {
+  save(widget?: Widget): Promise<IContentsModel> {
+    widget = widget || this.activeWidget;
     if (this.widgets.indexOf(widget) === -1) {
       return;
     }
@@ -151,7 +181,8 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Revert the widget contents.
    */
-  revert(widget: Widget): Promise<void> {
+  revert(widget?: Widget): Promise<void> {
+    widget = widget || this.activeWidget;
     if (this.widgets.indexOf(widget) === -1) {
       return;
     }
@@ -166,7 +197,8 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Close the widget.
    */
-  close(widget: Widget): boolean {
+  close(widget?: Widget): boolean {
+    widget = widget || this.activeWidget;
     let index = this.widgets.indexOf(widget);
     if (index === -1) {
       return false;
@@ -242,7 +274,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
     }
   }
 
-  private _manager: IContentsManager;
+  private _manager: IContentsManager = null;
   private _widgets: Widget[] = [];
 }
 
@@ -326,5 +358,22 @@ namespace AbstractFileHandler {
    * widget.
    */
   export
+  const activeWidgetSignal = new Signal<AbstractFileHandler, IChangedArgs<Widget>>();
+
+  /**
+   * A signal finished when a file handler has finished populating a
+   * widget.
+   */
+  export
   const finishedSignal = new Signal<AbstractFileHandler, IContentsModel>();
+
+  /**
+   * A property descriptor for the file handler active widget.
+   */
+  export
+  const activeWidgetProperty = new Property<AbstractFileHandler, Widget>({
+    name: 'activeWidget',
+    value: null,
+    notify: activeWidgetSignal
+  });
 }

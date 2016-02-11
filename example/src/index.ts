@@ -34,23 +34,16 @@ function main(): void {
   });
 
   let contentsManager = new ContentsManager(getBaseUrl());
-  let handler = new FileHandler(contentsManager);
+  let fileHandler = new FileHandler(contentsManager);
   let docManager = new DocumentManager();
-  docManager.registerDefault(handler);
+  docManager.registerDefault(fileHandler);
   docManager.openRequested.connect((manager, widget) => {
     dock.insertTabAfter(widget);
     keymapManager.add([{
       sequence: ['Accel S'],
       selector: '.jp-CodeMirrorWidget',
       handler: () => {
-        handler.save(widget);
-        return true;
-      }
-    }, {
-      sequence: ['Accel R'],
-      selector: '.jp-CodeMirrorWidget',
-      handler: () => {
-        handler.revert(widget);
+        fileHandler.save();
         return true;
       }
     }]);
