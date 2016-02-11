@@ -131,7 +131,7 @@ class DocumentManager {
   }
 
   /**
-   * Save the current document.
+   * Save the active document.
    */
   save(): void {
     let handler = this.activeHandler;
@@ -139,7 +139,7 @@ class DocumentManager {
   }
 
   /**
-   * Revert the current document.
+   * Revert the active document.
    */
   revert(): void {
     let handler = this.activeHandler;
@@ -147,7 +147,7 @@ class DocumentManager {
   }
 
   /**
-   * Close the current document.
+   * Close the active document.
    */
   close(): void {
     let handler = this.activeHandler;

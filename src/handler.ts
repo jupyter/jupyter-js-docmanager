@@ -133,7 +133,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Open a path and return a widget.
+   * Open a contents model and return a widget.
    */
   open(model: IContentsModel): Widget {
     let path = model.path;
@@ -162,7 +162,11 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Save the widget contents.
+   * Save widget contents.
+   *
+   * @param widget - The widget to save (defaults to active widget).
+   *
+   * returns A promise that resolves to the contents of the widget.
    */
   save(widget?: Widget): Promise<IContentsModel> {
     widget = widget || this.activeWidget;
@@ -179,9 +183,13 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Revert the widget contents.
+   * Revert widget contents.
+   *
+   * @param widget - The widget to revert (defaults to active widget).
+   *
+   * returns A promise that resolves to the new contents of the widget.
    */
-  revert(widget?: Widget): Promise<void> {
+  revert(widget?: Widget): Promise<IContentsModel> {
     widget = widget || this.activeWidget;
     if (this.widgets.indexOf(widget) === -1) {
       return;
@@ -190,12 +198,17 @@ abstract class AbstractFileHandler implements IMessageFilter {
     return this.getContents(model).then(contents => {
       return this.setState(widget, contents).then(() => {
         widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+        return contents;
       });
     });
   }
 
   /**
-   * Close the widget.
+   * Close a widget.
+   *
+   * @param widget - The widget to close (defaults to active widget).
+   *
+   * returns A boolean indicating whether the widget was closed.
    */
   close(widget?: Widget): boolean {
     widget = widget || this.activeWidget;
