@@ -47,8 +47,26 @@ class DocumentManager {
    * #### Notes
    * This is a read-only property.
    */
-  get currentWidget(): Widget {
-    return this._currentWidget;
+  get activeWidget(): Widget {
+    for (let h of this._handlers) {
+      if (h.activeWidget) {
+        return h.activeWidget;
+      }
+    }
+  }
+
+  /**
+   * Get the most recently focused handler.
+   *
+   * #### Notes
+   * This is a read-only property.
+   */
+  get activeHandler(): AbstractFileHandler {
+    for (let h of this._handlers) {
+      if (h.activeWidget) {
+        return h;
+      }
+    }
   }
 
   /**
@@ -69,11 +87,11 @@ class DocumentManager {
    * Register a default file handler.
    */
   registerDefault(handler: AbstractFileHandler): void {
-    if (this._defaultHandler !== null) {
+    if (this._defaultHandler !== -1) {
       throw Error('Default handler already registered');
     }
     this._handlers.push(handler);
-    this._defaultHandler = handler;
+    this._defaultHandler = this._handlers.length - 1;
   }
 
   /**
@@ -97,8 +115,8 @@ class DocumentManager {
 
     // If there were no matches, use default handler.
     } else if (handlers.length === 0) {
-      if (this._defaultHandler !== null) {
-        widget = this._open(this._defaultHandler, model);
+      if (this._defaultHandler !== -1) {
+        widget = this._open(this._handlers[this._defaultHandler], model);
       } else {
         throw new Error(`Could not open file '${path}'`);
       }
@@ -116,23 +134,27 @@ class DocumentManager {
    * Save the current document.
    */
   save(): void {
-    if (this._currentHandler) this._currentHandler.save(this._currentWidget);
+    let handler = this.activeHandler;
+    if (handler) handler.save();
   }
 
   /**
    * Revert the current document.
    */
   revert(): void {
-    if (this._currentHandler) this._currentHandler.revert(this._currentWidget);
+    let handler = this.activeHandler;
+    if (handler) handler.revert();
   }
 
   /**
    * Close the current document.
    */
   close(): void {
-    if (this._currentHandler) this._currentHandler.close(this._currentWidget);
-    this._currentWidget = null;
-    this._currentHandler = null;
+    let handler = this.activeHandler;
+    if (handler) {
+      handler.close();
+      handler.activeWidget = null;
+    }
   }
 
   /**
@@ -143,9 +165,8 @@ class DocumentManager {
       for (let w of h.widgets) {
         w.close();
       }
+      h.activeWidget = null;
     }
-    this._currentWidget = null;
-    this._currentHandler = null;
   }
 
   /**
@@ -170,21 +191,12 @@ class DocumentManager {
       // If the widget belongs to the handler, update the focused widget.
       let widget = arrays.find(h.widgets,
         w => { return w.isVisible && w.node.contains(event.target as HTMLElement); });
-      if (widget === this._currentWidget) {
-        continue;
-      } else if (widget) {
-        this._currentWidget = widget;
-        this._currentHandler = h;
-      } else {
-        h.activeWidget = null;
-      }
+      h.activeWidget = widget;
     }
   }
 
   private _handlers: AbstractFileHandler[] = [];
-  private _defaultHandler: AbstractFileHandler = null;
-  private _currentWidget: Widget = null;
-  private _currentHandler: AbstractFileHandler = null;
+  private _defaultHandler = -1;
 }
 
 
