@@ -59,6 +59,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   constructor(manager: IContentsManager) {
     this._manager = manager;
+    document.addEventListener('focus', this._onFocus.bind(this), true);
   }
 
   /**
@@ -76,35 +77,13 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Get the current set of widgets managed by the handler.
+   * Get the active widget for the handler (can be null).
    *
    * #### Notes
    * This is a read-only property
    */
-  get widgets(): Widget[] {
-    return this._widgets.slice();
-  }
-
-  /**
-   * Get the active widget for the handler (can be null).
-   *
-   * #### Notes
-   * This is intended to be managed by the DocumentManager and can be
-   * set to `null` to indicate no active widget.
-   */
   get activeWidget(): Widget {
     return AbstractFileHandler.activeWidgetProperty.get(this);
-  }
-
-  /**
-   * Set the active widget for the handler (can be null).
-   *
-   * #### Notes
-   * This is intended to be managed by the DocumentManager and can be
-   * set to `null` to indicate no active widget.
-   */
-  set activeWidget(widget: Widget) {
-    AbstractFileHandler.activeWidgetProperty.set(this, widget);
   }
 
   /**
@@ -133,17 +112,24 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
+   * Deactivate the handler.
+   */
+  deactivate(): void {
+    AbstractFileHandler.activeWidgetProperty.set(this, null);
+  }
+
+  /**
    * Open a contents model and return a widget.
    */
   open(model: IContentsModel): Widget {
     let path = model.path;
-    let index = arrays.findIndex(this.widgets,
+    let index = arrays.findIndex(this._widgets,
       (widget, ind) => {
         return AbstractFileHandler.modelProperty.get(widget).path === path;
       }
     );
     if (index !== -1) {
-      return this.widgets[index];
+      return this._widgets[index];
     }
     var widget = this.createWidget(model);
     widget.title.closable = true;
@@ -170,7 +156,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   save(widget?: Widget): Promise<IContentsModel> {
     widget = widget || this.activeWidget;
-    if (this.widgets.indexOf(widget) === -1) {
+    if (this._widgets.indexOf(widget) === -1) {
       return;
     }
     let model = AbstractFileHandler.modelProperty.get(widget);
@@ -191,7 +177,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   revert(widget?: Widget): Promise<IContentsModel> {
     widget = widget || this.activeWidget;
-    if (this.widgets.indexOf(widget) === -1) {
+    if (this._widgets.indexOf(widget) === -1) {
       return;
     }
     let model = AbstractFileHandler.modelProperty.get(widget);
@@ -212,13 +198,26 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   close(widget?: Widget): boolean {
     widget = widget || this.activeWidget;
-    let index = this.widgets.indexOf(widget);
+    let index = this._widgets.indexOf(widget);
     if (index === -1) {
       return false;
     }
     widget.dispose();
     this._widgets.splice(index, 1);
+    if (widget === this.activeWidget) {
+      AbstractFileHandler.activeWidgetProperty.set(this, null);
+    }
     return true;
+  }
+
+  /**
+   * Close all widgets.
+   */
+  closeAll(): void {
+    for (let w of this._widgets) {
+      w.close();
+    }
+    AbstractFileHandler.activeWidgetProperty.set(this, null);
   }
 
   /**
@@ -274,7 +273,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * Handle a change to one of the widget titles.
    */
   protected titleChanged(title: Title, args: IChangedArgs<any>): void {
-    let widget = arrays.find(this.widgets,
+    let widget = arrays.find(this._widgets,
       (w, index) => { return w.title === title; });
     if (widget === void 0) {
       return
@@ -285,6 +284,16 @@ abstract class AbstractFileHandler implements IMessageFilter {
       this.manager.rename(model.path, newPath).then(contents =>
         AbstractFileHandler.modelProperty.set(widget, contents));
     }
+  }
+
+  /**
+   * Handle a focus events.
+   */
+  private _onFocus(event: Event) {
+    let target = event.target as HTMLElement;
+    let widget = arrays.find(this._widgets,
+      w => w.isVisible && w.node.contains(target));
+    if (widget) AbstractFileHandler.activeWidgetProperty.set(this, widget);
   }
 
   private _manager: IContentsManager = null;

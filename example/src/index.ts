@@ -37,7 +37,8 @@ function main(): void {
   let fileHandler = new FileHandler(contentsManager);
   let docManager = new DocumentManager();
   docManager.registerDefault(fileHandler);
-  docManager.openRequested.connect((manager, widget) => {
+  contentsManager.get('index.html').then(contents => {
+    let widget = docManager.open(contents);
     dock.insertTabAfter(widget);
     keymapManager.add([{
       sequence: ['Accel S'],
@@ -47,9 +48,6 @@ function main(): void {
         return true;
       }
     }]);
-  });
-  contentsManager.get('index.html').then(contents => {
-    docManager.open(contents);
   });
 
 }
