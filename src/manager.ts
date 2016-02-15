@@ -43,7 +43,7 @@ class DocumentManager {
    */
   register(handler: AbstractFileHandler): void {
     this._handlers.push(handler);
-    handler.activeChanged.connect(this._onActiveChanged, this);
+    handler.activated.connect(this._onActiveChanged, this);
   }
 
   /**
@@ -141,7 +141,7 @@ class DocumentManager {
     let widget = handler.open(model);
     // Clear all other active widgets.
     for (let h of this._handlers) {
-      if (h !== handler) handler.activeWidget = null;
+      if (h !== handler) handler.deactivate();
     }
     return widget;
   }
@@ -149,7 +149,7 @@ class DocumentManager {
   /**
    * A handler for active widget changed signals.
    */
-  private _onActiveChanged(handler: AbstractFileHandler, widget: IChangedArgs<Widget>) {
+  private _onActiveChanged(handler: AbstractFileHandler) {
     this._activeHandler = handler;
     for (let h of this._handlers) {
       if (h !== handler) h.deactivate();

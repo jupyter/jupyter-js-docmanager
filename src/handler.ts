@@ -77,16 +77,6 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Get the active widget for the handler (can be null).
-   *
-   * #### Notes
-   * This is a read-only property
-   */
-  get activeWidget(): Widget {
-    return AbstractFileHandler.activeWidgetProperty.get(this);
-  }
-
-  /**
    * Get the contents manager used by the handler.
    *
    * #### Notes
@@ -105,17 +95,17 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * A signal emitted when the active widget changes.
+   * A signal emitted when the file handler is activated.
    */
-  get activeChanged(): ISignal<AbstractFileHandler, IChangedArgs<Widget>> {
-    return AbstractFileHandler.activeWidgetSignal.bind(this);
+  get activated(): ISignal<AbstractFileHandler, void> {
+    return AbstractFileHandler.activatedSignal.bind(this);
   }
 
   /**
    * Deactivate the handler.
    */
   deactivate(): void {
-    AbstractFileHandler.activeWidgetProperty.set(this, null);
+    this._activeWidget = null;
   }
 
   /**
@@ -150,12 +140,12 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Save widget contents.
    *
-   * @param widget - The widget to save (defaults to active widget).
+   * @param widget - The widget to save (defaults to current active widget).
    *
    * returns A promise that resolves to the contents of the widget.
    */
   save(widget?: Widget): Promise<IContentsModel> {
-    widget = widget || this.activeWidget;
+    widget = widget || this._activeWidget;
     if (this._widgets.indexOf(widget) === -1) {
       return;
     }
@@ -171,12 +161,12 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Revert widget contents.
    *
-   * @param widget - The widget to revert (defaults to active widget).
+   * @param widget - The widget to revert (defaults to current active widget).
    *
    * returns A promise that resolves to the new contents of the widget.
    */
   revert(widget?: Widget): Promise<IContentsModel> {
-    widget = widget || this.activeWidget;
+    widget = widget || this._activeWidget;
     if (this._widgets.indexOf(widget) === -1) {
       return;
     }
@@ -192,20 +182,20 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Close a widget.
    *
-   * @param widget - The widget to close (defaults to active widget).
+   * @param widget - The widget to close (defaults to current active widget).
    *
    * returns A boolean indicating whether the widget was closed.
    */
   close(widget?: Widget): boolean {
-    widget = widget || this.activeWidget;
+    widget = widget || this._activeWidget;
     let index = this._widgets.indexOf(widget);
     if (index === -1) {
       return false;
     }
     widget.dispose();
     this._widgets.splice(index, 1);
-    if (widget === this.activeWidget) {
-      AbstractFileHandler.activeWidgetProperty.set(this, null);
+    if (widget === this._activeWidget) {
+      this._activeWidget = null;
     }
     return true;
   }
@@ -217,7 +207,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
     for (let w of this._widgets) {
       w.close();
     }
-    AbstractFileHandler.activeWidgetProperty.set(this, null);
+    this._activeWidget = null;
   }
 
   /**
@@ -293,11 +283,15 @@ abstract class AbstractFileHandler implements IMessageFilter {
     let target = event.target as HTMLElement;
     let widget = arrays.find(this._widgets,
       w => w.isVisible && w.node.contains(target));
-    if (widget) AbstractFileHandler.activeWidgetProperty.set(this, widget);
+    if (widget && !this._activeWidget) {
+      this.activated.emit(void 0);
+    }
+    this._activeWidget = widget;
   }
 
   private _manager: IContentsManager = null;
   private _widgets: Widget[] = [];
+  private _activeWidget: Widget = null;
 }
 
 
@@ -376,26 +370,14 @@ namespace AbstractFileHandler {
   });
 
   /**
-   * A signal finished when a file handler has finished populating a
-   * widget.
+   * A signal emitted when a file handler is activated.
    */
   export
-  const activeWidgetSignal = new Signal<AbstractFileHandler, IChangedArgs<Widget>>();
+  const activatedSignal = new Signal<AbstractFileHandler, void>();
 
   /**
-   * A signal finished when a file handler has finished populating a
-   * widget.
+   * A signal emitted when a file handler has finished populating a widget.
    */
   export
   const finishedSignal = new Signal<AbstractFileHandler, IContentsModel>();
-
-  /**
-   * A property descriptor for the file handler active widget.
-   */
-  export
-  const activeWidgetProperty = new Property<AbstractFileHandler, Widget>({
-    name: 'activeWidget',
-    value: null,
-    notify: activeWidgetSignal
-  });
 }
