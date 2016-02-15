@@ -22,7 +22,7 @@ import {
 } from 'phosphor-messaging';
 
 import {
-  IChangedArgs, Property
+  Property
 } from 'phosphor-properties';
 
 import {
@@ -279,7 +279,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Handle a focus events.
    */
-  private _onFocus(event: Event) {
+  private _onFocus = (event: Event) {
     let target = event.target as HTMLElement;
     let prev = this._activeWidget;
     let widget = arrays.find(this._widgets,
