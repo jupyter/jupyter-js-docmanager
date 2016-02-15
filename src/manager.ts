@@ -10,10 +10,6 @@ import * as arrays
  from 'phosphor-arrays';
 
 import {
-  IChangedArgs
-} from 'phosphor-properties';
-
-import {
   ISignal, Signal
 } from 'phosphor-signaling';
 
