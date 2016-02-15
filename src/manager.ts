@@ -43,7 +43,7 @@ class DocumentManager {
    */
   register(handler: AbstractFileHandler): void {
     this._handlers.push(handler);
-    handler.activated.connect(this._onActiveChanged, this);
+    handler.activated.connect(this._onActivated, this);
   }
 
   /**
@@ -147,9 +147,9 @@ class DocumentManager {
   }
 
   /**
-   * A handler for active widget changed signals.
+   * A handler for handler activated signals.
    */
-  private _onActiveChanged(handler: AbstractFileHandler) {
+  private _onActivated(handler: AbstractFileHandler) {
     this._activeHandler = handler;
     for (let h of this._handlers) {
       if (h !== handler) h.deactivate();
