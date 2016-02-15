@@ -281,11 +281,12 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   private _onFocus(event: Event) {
     let target = event.target as HTMLElement;
+    let prev = this._activeWidget;
     let widget = arrays.find(this._widgets,
       w => w.isVisible && w.node.contains(target));
-    if (widget && !this._activeWidget) {
-      this.activated.emit(void 0);
+    if (widget) {
       this._activeWidget = widget;
+      if (!prev) this.activated.emit(void 0);
     }
   }
 
