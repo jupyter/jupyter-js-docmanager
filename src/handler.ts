@@ -285,8 +285,8 @@ abstract class AbstractFileHandler implements IMessageFilter {
       w => w.isVisible && w.node.contains(target));
     if (widget && !this._activeWidget) {
       this.activated.emit(void 0);
+      this._activeWidget = widget;
     }
-    this._activeWidget = widget;
   }
 
   private _manager: IContentsManager = null;
