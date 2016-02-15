@@ -59,7 +59,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   constructor(manager: IContentsManager) {
     this._manager = manager;
-    document.addEventListener('focus', this._onFocus.bind(this), true);
+    document.addEventListener('focus', this._onFocus, true);
   }
 
   /**
@@ -116,7 +116,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
     if (!widget) {
       widget = this.createWidget(model);
       widget.title.closable = true;
-      widget.title.changed.connect(this.titleChanged, this);
+      widget.title.changed.connect(this.onTitleChanged, this);
       this._setModel(widget, model);
       this._widgets.push(widget);
       installMessageFilter(widget, this);
@@ -256,7 +256,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Handle a change to one of the widget titles.
    */
-  protected titleChanged(title: Title, args: IChangedArgs<any>): void {
+  protected onTitleChanged(title: Title, args: IChangedArgs<any>): void {
     let widget = arrays.find(this._widgets,
       (w, index) => { return w.title === title; });
     if (widget === void 0) {
