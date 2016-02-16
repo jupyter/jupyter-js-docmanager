@@ -299,7 +299,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * Find a widget given a model.
    */
   private _findWidgetByModel(model: IContentsModel): Widget {
-    return arrays.find(this._widgets, widget => this._getModel(widget).path === model.path)
+    return arrays.find(this._widgets, widget => this._getModel(widget).path === model.path);
   }
 
   /**
