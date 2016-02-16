@@ -105,7 +105,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * Deactivate the handler.
    */
   deactivate(): void {
-    this._activeWidget = null;
+    this.activeWidget = null;
   }
 
   /**
@@ -188,8 +188,8 @@ abstract class AbstractFileHandler implements IMessageFilter {
     widget.dispose();
     let index = this._widgets.indexOf(widget);
     this._widgets.splice(index, 1);
-    if (widget === this._activeWidget) {
-      this._activeWidget = null;
+    if (widget === this.activeWidget) {
+      this.activeWidget = null;
     }
     return true;
   }
@@ -201,7 +201,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
     for (let w of this._widgets) {
       w.close();
     }
-    this._activeWidget = null;
+    this.activeWidget = null;
   }
 
   /**
@@ -288,7 +288,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * Resolve a given widget.
    */
   private _resolveWidget(widget: Widget): Widget {
-    widget = widget || this._activeWidget;
+    widget = widget || this.activeWidget;
     if (this._widgets.indexOf(widget) === -1) {
       return;
     }
@@ -307,18 +307,18 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   private _onFocus = (event: Event) => {
     let target = event.target as HTMLElement;
-    let prev = this._activeWidget;
+    let prev = this.activeWidget;
     let widget = arrays.find(this._widgets,
       w => w.isVisible && w.node.contains(target));
     if (widget) {
-      this._activeWidget = widget;
+      this.activeWidget = widget;
       if (!prev) this.activated.emit(void 0);
     }
   }
 
+  protected activeWidget: Widget = null;
   private _manager: IContentsManager = null;
   private _widgets: Widget[] = [];
-  private _activeWidget: Widget = null;
 }
 
 
