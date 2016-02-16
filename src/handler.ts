@@ -59,6 +59,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
    */
   constructor(manager: IContentsManager) {
     this._manager = manager;
+    document.addEventListener('focus', this._onFocus, true);
   }
 
   /**
@@ -76,16 +77,6 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Get the current set of widgets managed by the handler.
-   *
-   * #### Notes
-   * This is a read-only property
-   */
-  get widgets(): Widget[] {
-    return this._widgets.slice();
-  }
-
-  /**
    * Get the contents manager used by the handler.
    *
    * #### Notes
@@ -100,28 +91,36 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * contents of the widget.
    */
   get finished(): ISignal<AbstractFileHandler, IContentsModel> {
-    return AbstractFileHandler.finishedSignal.bind(this);
+    return Private.finishedSignal.bind(this);
   }
 
   /**
-   * Open a path and return a widget.
+   * A signal emitted when the file handler is activated.
+   */
+  get activated(): ISignal<AbstractFileHandler, void> {
+    return Private.activatedSignal.bind(this);
+  }
+
+  /**
+   * Deactivate the handler.
+   */
+  deactivate(): void {
+    this._activeWidget = null;
+  }
+
+  /**
+   * Open a contents model and return a widget.
    */
   open(model: IContentsModel): Widget {
-    let path = model.path;
-    let index = arrays.findIndex(this.widgets,
-      (widget, ind) => {
-        return AbstractFileHandler.modelProperty.get(widget).path === path;
-      }
-    );
-    if (index !== -1) {
-      return this.widgets[index];
+    let widget = this._findWidgetByModel(model);
+    if (!widget) {
+      widget = this.createWidget(model);
+      widget.title.closable = true;
+      widget.title.changed.connect(this.onTitleChanged, this);
+      this._setModel(widget, model);
+      this._widgets.push(widget);
+      installMessageFilter(widget, this);
     }
-    var widget = this.createWidget(model);
-    widget.title.closable = true;
-    widget.title.changed.connect(this.titleChanged, this);
-    AbstractFileHandler.modelProperty.set(widget, model);
-    this._widgets.push(widget);
-    installMessageFilter(widget, this);
 
     this.getContents(model).then(contents => {
       this.setState(widget, contents).then(
@@ -133,14 +132,19 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Save the widget contents.
+   * Save widget contents.
+   *
+   * @param widget - The widget to save (defaults to current active widget).
+   *
+   * returns A promise that resolves to the contents of the widget.
    */
-  save(widget: Widget): Promise<IContentsModel> {
-    if (this.widgets.indexOf(widget) === -1) {
+  save(widget?: Widget): Promise<IContentsModel> {
+    widget = this._resolveWidget(widget);
+    if (!widget) {
       return;
     }
-    let model = AbstractFileHandler.modelProperty.get(widget);
-    return this.getState(widget).then(contents => {
+    let model = this._getModel(widget);
+    return this.getState(widget, model).then(contents => {
       return this.manager.save(model.path, contents).then(contents => {
         widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
         return contents;
@@ -149,31 +153,55 @@ abstract class AbstractFileHandler implements IMessageFilter {
   }
 
   /**
-   * Revert the widget contents.
+   * Revert widget contents.
+   *
+   * @param widget - The widget to revert (defaults to current active widget).
+   *
+   * returns A promise that resolves to the new contents of the widget.
    */
-  revert(widget: Widget): Promise<void> {
-    if (this.widgets.indexOf(widget) === -1) {
+  revert(widget?: Widget): Promise<IContentsModel> {
+    widget = this._resolveWidget(widget);
+    if (!widget) {
       return;
     }
-    let model = AbstractFileHandler.modelProperty.get(widget);
+    let model = this._getModel(widget);
     return this.getContents(model).then(contents => {
       return this.setState(widget, contents).then(() => {
         widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+        return contents;
       });
     });
   }
 
   /**
-   * Close the widget.
+   * Close a widget.
+   *
+   * @param widget - The widget to close (defaults to current active widget).
+   *
+   * returns A boolean indicating whether the widget was closed.
    */
-  close(widget: Widget): boolean {
-    let index = this.widgets.indexOf(widget);
-    if (index === -1) {
-      return false;
+  close(widget?: Widget): boolean {
+    widget = this._resolveWidget(widget);
+    if (!widget) {
+      return;
     }
     widget.dispose();
+    let index = this._widgets.indexOf(widget);
     this._widgets.splice(index, 1);
+    if (widget === this._activeWidget) {
+      this._activeWidget = null;
+    }
     return true;
+  }
+
+  /**
+   * Close all widgets.
+   */
+  closeAll(): void {
+    for (let w of this._widgets) {
+      w.close();
+    }
+    this._activeWidget = null;
   }
 
   /**
@@ -210,9 +238,9 @@ abstract class AbstractFileHandler implements IMessageFilter {
   protected abstract setState(widget: Widget, model: IContentsModel): Promise<void>;
 
   /**
-   * Get the contents model for a widget.
+   * Get the updated contents model for a widget.
    */
-  protected abstract getState(widget: Widget): Promise<IContentsModel>;
+  protected abstract getState(widget: Widget, model: IContentsModel): Promise<IContentsModel>;
 
   /**
    * Get the path from the old path widget title text.
@@ -228,22 +256,69 @@ abstract class AbstractFileHandler implements IMessageFilter {
   /**
    * Handle a change to one of the widget titles.
    */
-  protected titleChanged(title: Title, args: IChangedArgs<any>): void {
-    let widget = arrays.find(this.widgets,
+  protected onTitleChanged(title: Title, args: IChangedArgs<any>): void {
+    let widget = arrays.find(this._widgets,
       (w, index) => { return w.title === title; });
     if (widget === void 0) {
       return
     }
     if (args.name == 'text') {
-      let model = AbstractFileHandler.modelProperty.get(widget);
+      let model = this._getModel(widget);
       let newPath = this.getNewPath(model.path, args.newValue);
       this.manager.rename(model.path, newPath).then(contents =>
-        AbstractFileHandler.modelProperty.set(widget, contents));
+        this._setModel(widget, contents));
     }
   }
 
-  private _manager: IContentsManager;
+  /**
+   * Get the model for a given widget.
+   */
+  private _getModel(widget: Widget) {
+    return Private.modelProperty.get(widget);
+  }
+
+  /**
+   * Set the model for a widget.
+   */
+  private _setModel(widget: Widget, model: IContentsModel) {
+    Private.modelProperty.set(widget, model);
+  }
+
+  /**
+   * Resolve a given widget.
+   */
+  private _resolveWidget(widget: Widget): Widget {
+    widget = widget || this._activeWidget;
+    if (this._widgets.indexOf(widget) === -1) {
+      return;
+    }
+    return widget;
+  }
+
+  /**
+   * Find a widget given a model.
+   */
+  private _findWidgetByModel(model: IContentsModel): Widget {
+    return arrays.find(this._widgets, widget => this._getModel(widget).path === model.path);
+  }
+
+  /**
+   * Handle a focus events.
+   */
+  private _onFocus = (event: Event) => {
+    let target = event.target as HTMLElement;
+    let prev = this._activeWidget;
+    let widget = arrays.find(this._widgets,
+      w => w.isVisible && w.node.contains(target));
+    if (widget) {
+      this._activeWidget = widget;
+      if (!prev) this.activated.emit(void 0);
+    }
+  }
+
+  private _manager: IContentsManager = null;
   private _widgets: Widget[] = [];
+  private _activeWidget: Widget = null;
 }
 
 
@@ -295,8 +370,7 @@ class FileHandler extends AbstractFileHandler {
   /**
    * Get the contents model for a widget.
    */
-  protected getState(widget: Widget): Promise<IContentsModel> {
-    let model = AbstractFileHandler.modelProperty.get(widget);
+  protected getState(widget: Widget, model: IContentsModel): Promise<IContentsModel> {
     let name = model.path.split('/').pop();
     name = name.split('.')[0];
     let content = (widget as CodeMirrorWidget).editor.getDoc().getValue();
@@ -308,10 +382,9 @@ class FileHandler extends AbstractFileHandler {
 
 
 /**
- * A namespace for AbstractFileHandler statics.
+ * A namespace for AbstractFileHandler private data.
  */
-export
-namespace AbstractFileHandler {
+namespace Private {
   /**
    * An attached property with the widget path.
    */
@@ -322,8 +395,13 @@ namespace AbstractFileHandler {
   });
 
   /**
-   * A signal finished when a file handler has finished populating a
-   * widget.
+   * A signal emitted when a file handler is activated.
+   */
+  export
+  const activatedSignal = new Signal<AbstractFileHandler, void>();
+
+  /**
+   * A signal emitted when a file handler has finished populating a widget.
    */
   export
   const finishedSignal = new Signal<AbstractFileHandler, IContentsModel>();

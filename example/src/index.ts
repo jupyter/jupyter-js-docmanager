@@ -34,29 +34,20 @@ function main(): void {
   });
 
   let contentsManager = new ContentsManager(getBaseUrl());
-  let handler = new FileHandler(contentsManager);
+  let fileHandler = new FileHandler(contentsManager);
   let docManager = new DocumentManager();
-  docManager.registerDefault(handler);
-  docManager.openRequested.connect((manager, widget) => {
+  docManager.registerDefault(fileHandler);
+  contentsManager.get('index.html').then(contents => {
+    let widget = docManager.open(contents);
     dock.insertTabAfter(widget);
     keymapManager.add([{
       sequence: ['Accel S'],
       selector: '.jp-CodeMirrorWidget',
       handler: () => {
-        handler.save(widget);
-        return true;
-      }
-    }, {
-      sequence: ['Accel R'],
-      selector: '.jp-CodeMirrorWidget',
-      handler: () => {
-        handler.revert(widget);
+        fileHandler.save();
         return true;
       }
     }]);
-  });
-  contentsManager.get('index.html').then(contents => {
-    docManager.open(contents);
   });
 
 }

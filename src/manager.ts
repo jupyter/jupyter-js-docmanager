@@ -27,12 +27,6 @@ import {
 export
 const DOCUMENT_CLASS = 'jp-Document';
 
-/**
- * The class name added to focused widgets.
- */
-export
-const FOCUS_CLASS = 'jp-mod-focus';
-
 
 /**
  * A document manager for Jupyter.
@@ -41,49 +35,26 @@ export
 class DocumentManager {
 
   /**
-   * Construct a new document manager.
-   */
-  constructor() {
-    document.addEventListener('focus', this._onFocus.bind(this), true);
-  }
-
-  /**
-   * Get the most recently focused widget.
-   *
-   * #### Notes
-   * This is a read-only property.
-   */
-  get currentWidget(): Widget {
-    return this._currentWidget;
-  }
-
-  /**
-   * Get the open requested signal.
-   */
-  get openRequested(): ISignal<DocumentManager, Widget> {
-    return Private.openRequestedSignal.bind(this);
-  }
-
-  /**
    * Register a file handler.
    */
   register(handler: AbstractFileHandler): void {
     this._handlers.push(handler);
+    handler.activated.connect(this._onActivated, this);
   }
 
   /**
    * Register a default file handler.
    */
   registerDefault(handler: AbstractFileHandler): void {
-    if (this._defaultHandler !== null) {
+    if (this._defaultHandler) {
       throw Error('Default handler already registered');
     }
-    this._handlers.push(handler);
+    this.register(handler);
     this._defaultHandler = handler;
   }
 
   /**
-   * Open a file and add it to the application shell.
+   * Open a contents model and return a widget.
    */
   open(model: IContentsModel): Widget {
     if (this._handlers.length === 0) {
@@ -103,7 +74,7 @@ class DocumentManager {
 
     // If there were no matches, use default handler.
     } else if (handlers.length === 0) {
-      if (this._defaultHandler !== null) {
+      if (this._defaultHandler) {
         widget = this._open(this._defaultHandler, model);
       } else {
         throw new Error(`Could not open file '${path}'`);
@@ -119,39 +90,44 @@ class DocumentManager {
   }
 
   /**
-   * Save the current document.
+   * Save the active document.
+   *
+   * returns A promise that resolves to the contents of the widget.
    */
-  save(): void {
-    if (this._currentHandler) this._currentHandler.save(this._currentWidget);
+  save(): Promise<IContentsModel>  {
+    if (this._activeHandler) {
+      return this._activeHandler.save();
+    }
   }
 
   /**
-   * Revert the current document.
+   * Revert the active document.
+   *
+   * returns A promise that resolves to the new contents of the widget.
    */
-  revert(): void {
-    if (this._currentHandler) this._currentHandler.revert(this._currentWidget);
+  revert(): Promise<IContentsModel> {
+    if (this._activeHandler) {
+      return this._activeHandler.revert();
+    }
   }
 
   /**
-   * Close the current document.
+   * Close the active document.
+   *
+   * returns A boolean indicating whether the widget was closed.
    */
-  close(): void {
-    if (this._currentHandler) this._currentHandler.close(this._currentWidget);
-    this._currentWidget = null;
-    this._currentHandler = null;
+  close(): boolean {
+    if (this._activeHandler) {
+      return this._activeHandler.close();
+    }
+    return false;
   }
 
   /**
    * Close all documents.
    */
   closeAll(): void {
-    for (let h of this._handlers) {
-      for (let w of h.widgets) {
-        w.close();
-      }
-    }
-    this._currentWidget = null;
-    this._currentHandler = null;
+    this._handlers.map(handler => handler.closeAll());
   }
 
   /**
@@ -159,44 +135,24 @@ class DocumentManager {
    */
   private _open(handler: AbstractFileHandler, model: IContentsModel): Widget {
     let widget = handler.open(model);
-    this.openRequested.emit(widget);
+    // Clear all other active widgets.
+    for (let h of this._handlers) {
+      if (h !== handler) handler.deactivate();
+    }
     return widget;
   }
 
   /**
-   * Handle a focus event on the document.
+   * A handler for handler activated signals.
    */
-  private _onFocus(event: Event) {
+  private _onActivated(handler: AbstractFileHandler) {
+    this._activeHandler = handler;
     for (let h of this._handlers) {
-      // If the widget belongs to the handler, update the focused widget.
-      let widget = arrays.find(h.widgets,
-        w => { return w.isVisible && w.node.contains(event.target as HTMLElement); });
-      if (widget === this._currentWidget) {
-        return;
-      } else if (widget) {
-        if (this._currentWidget) this._currentWidget.removeClass(FOCUS_CLASS);
-        this._currentWidget = widget;
-        this._currentHandler = h;
-        widget.addClass(FOCUS_CLASS);
-        return;
-      }
+      if (h !== handler) h.deactivate();
     }
   }
 
   private _handlers: AbstractFileHandler[] = [];
   private _defaultHandler: AbstractFileHandler = null;
-  private _currentWidget: Widget = null;
-  private _currentHandler: AbstractFileHandler = null;
-}
-
-
-/**
- * The namespace for the document handler private data.
- */
-namespace Private {
-  /**
-   * A signal emitted when the an open is requested.
-   */
-  export
-  const openRequestedSignal = new Signal<DocumentManager, Widget>();
+  private _activeHandler: AbstractFileHandler = null;
 }
