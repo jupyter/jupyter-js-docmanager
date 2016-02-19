@@ -367,7 +367,9 @@ class FileHandler extends AbstractFileHandler<CodeMirrorWidget> {
    * Create the widget from an `IContentsModel`.
    */
   protected createWidget(model: IContentsModel): CodeMirrorWidget {
-    return new CodeMirrorWidget();
+    let widget = new CodeMirrorWidget();
+    widget.editor.on('change', () => this.setDirty(widget));
+    return widget;
   }
 
   /**
@@ -376,9 +378,6 @@ class FileHandler extends AbstractFileHandler<CodeMirrorWidget> {
   protected populateWidget(widget: CodeMirrorWidget, model: IContentsModel): Promise<IContentsModel> {
     widget.editor.getDoc().setValue(model.content);
     loadModeByFileName(widget.editor, model.name);
-    widget.editor.on('change', () => {
-      this.setDirty(widget);
-    });
     return Promise.resolve(model);
   }
 
