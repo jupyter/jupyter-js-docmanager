@@ -114,13 +114,14 @@ class DocumentManager {
   /**
    * Close the active document.
    *
-   * returns A boolean indicating whether the widget was closed.
+   * returns A promise that resolves with a boolean indicating whether the
+      widget was closed.
    */
-  close(): boolean {
+  close(): Promise<boolean> {
     if (this._activeHandler) {
       return this._activeHandler.close();
     }
-    return false;
+    return Promise.resolve(false);
   }
 
   /**

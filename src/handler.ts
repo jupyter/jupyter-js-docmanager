@@ -6,15 +6,11 @@ import * as CodeMirror
   from 'codemirror';
 
 import {
-  IContentsModel, IContentsManager
+  IContentsModel, IContentsManager, IContentsOpts
 } from 'jupyter-js-services';
 
 import * as arrays
   from 'phosphor-arrays';
-
-import {
-  CodeMirrorWidget
-} from 'phosphor-codemirror';
 
 import {
   IMessageFilter, IMessageHandler, Message, installMessageFilter,
@@ -22,7 +18,7 @@ import {
 } from 'phosphor-messaging';
 
 import {
-  IChangedArgs, Property
+  Property
 } from 'phosphor-properties';
 
 import {
@@ -34,7 +30,7 @@ import {
 } from 'phosphor-widget';
 
 import {
-  JupyterCodeMirrorWidget
+  JupyterCodeMirrorWidget as CodeMirrorWidget
 } from './widget';
 
 import {
@@ -116,19 +112,32 @@ abstract class AbstractFileHandler implements IMessageFilter {
     if (!widget) {
       widget = this.createWidget(model);
       widget.title.closable = true;
-      widget.title.changed.connect(this.onTitleChanged, this);
       this._setModel(widget, model);
       this._widgets.push(widget);
       installMessageFilter(widget, this);
     }
 
-    this.getContents(model).then(contents => {
-      this.setState(widget, contents).then(
-        () => this.finished.emit(model)
-      );
-    });
+    // Fetch the contents and populate the widget asynchronously.
+    let opts = this.getFetchOptions(model);
+    this.manager.get(model.path, opts).then(contents => {
+      return this.populateWidget(widget, contents);
+    }).then(() => this.finished.emit(model));
 
     return widget;
+  }
+
+  /**
+   * Rename a file.
+   */
+  rename(oldPath: string, model: IContentsModel): void {
+    for (let w of this._widgets) {
+      let m = this._getModel(w);
+      if (m.path === oldPath) {
+        this._setModel(w, model);
+        w.title.text = this.getTitleText(model);
+        return;
+      }
+    }
   }
 
   /**
@@ -137,18 +146,21 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * @param widget - The widget to save (defaults to current active widget).
    *
    * returns A promise that resolves to the contents of the widget.
+   *
+   * #### Notes
+   * This clears the dirty state of the widget after a successful save.
    */
   save(widget?: Widget): Promise<IContentsModel> {
     widget = this._resolveWidget(widget);
     if (!widget) {
-      return;
+      return Promise.resolve(void 0);
     }
     let model = this._getModel(widget);
-    return this.getState(widget, model).then(contents => {
-      return this.manager.save(model.path, contents).then(contents => {
-        widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
-        return contents;
-      });
+    return this.getSaveOptions(widget, model).then(opts => {
+      return this.manager.save(model.path, opts)
+    }).then(contents => {
+      AbstractFileHandler.dirtyProperty.set(widget, false);
+      return contents;
     });
   }
 
@@ -158,18 +170,22 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * @param widget - The widget to revert (defaults to current active widget).
    *
    * returns A promise that resolves to the new contents of the widget.
+   *
+   * #### Notes
+   * This clears the dirty state of the widget after a successful revert.
    */
   revert(widget?: Widget): Promise<IContentsModel> {
     widget = this._resolveWidget(widget);
     if (!widget) {
-      return;
+      return Promise.resolve(void 0);
     }
     let model = this._getModel(widget);
-    return this.getContents(model).then(contents => {
-      return this.setState(widget, contents).then(() => {
-        widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
-        return contents;
-      });
+    let opts = this.getFetchOptions(model);
+    return this.manager.get(model.path, opts).then(contents => {
+      return this.populateWidget(widget, contents);
+    }).then(contents => {
+      AbstractFileHandler.dirtyProperty.set(widget, false);
+      return contents;
     });
   }
 
@@ -180,10 +196,14 @@ abstract class AbstractFileHandler implements IMessageFilter {
    *
    * returns A boolean indicating whether the widget was closed.
    */
-  close(widget?: Widget): boolean {
+  close(widget?: Widget): Promise<boolean> {
     widget = this._resolveWidget(widget);
     if (!widget) {
-      return;
+      return Promise.resolve(false);
+    }
+    if (widget.hasClass(DIRTY_CLASS)) {
+      // TODO: implement a dialog here.
+      console.log('CLOSING DIRTY FILE');
     }
     widget.dispose();
     let index = this._widgets.indexOf(widget);
@@ -191,7 +211,7 @@ abstract class AbstractFileHandler implements IMessageFilter {
     if (widget === this.activeWidget) {
       this.activeWidget = null;
     }
-    return true;
+    return Promise.resolve(true);
   }
 
   /**
@@ -208,66 +228,50 @@ abstract class AbstractFileHandler implements IMessageFilter {
    * Filter messages on the widget.
    */
   filterMessage(handler: IMessageHandler, msg: Message): boolean {
-    if (msg.type == 'close-request') {
-      return this.close(handler as Widget);
+    let widget = this._resolveWidget(handler as Widget);
+    if (msg.type == 'close-request' && widget) {
+      this.close(widget);
+      return true;
     }
     return false;
   }
 
   /**
-   * Get file contents given a path.
+   * Get options use to fetch the model contents from disk.
    *
    * #### Notes
    * Subclasses are free to use any or none of the information in
    * the model.
    */
-  protected abstract getContents(model: IContentsModel): Promise<IContentsModel>;
+  protected getFetchOptions(model: IContentsModel): IContentsOpts {
+    return { type: 'file', format: 'text' };
+  }
 
   /**
-   * Create the widget from a path.
+   * Get the options used to save the widget content.
+   */
+  protected abstract getSaveOptions(widget: Widget, model: IContentsModel): Promise<IContentsOpts>;
+
+  /**
+   * Create the widget from a model.
    */
   protected abstract createWidget(model: IContentsModel): Widget;
 
   /**
-   * Populate a widget from `IContentsModel`.
+   * Populate a widget from an `IContentsModel`.
    *
    * #### Notes
    * Subclasses are free to use any or none of the information in
-   * the model.
+   * the model.  It is up to subclasses to handle setting dirty state when
+   * the widget contents change.  See [[AbstractFileHandler.dirtyProperty]].
    */
-  protected abstract setState(widget: Widget, model: IContentsModel): Promise<void>;
+  protected abstract populateWidget(widget: Widget, model: IContentsModel): Promise<IContentsModel>;
 
   /**
-   * Get the updated contents model for a widget.
+   * Set the appropriate title text based on a model.
    */
-  protected abstract getState(widget: Widget, model: IContentsModel): Promise<IContentsModel>;
-
-  /**
-   * Get the path from the old path widget title text.
-   *
-   * #### Notes
-   * This is intended to be subclassed by other file handlers.
-   */
-  protected getNewPath(oldPath: string, title: string): string {
-    let dirname = oldPath.slice(0, oldPath.lastIndexOf('/') + 1);
-    return dirname + title;
-  }
-
-  /**
-   * Handle a change to one of the widget titles.
-   */
-  protected onTitleChanged(title: Title, args: IChangedArgs<any>): void {
-    let widget = arrays.find(this._widgets,
-      (w, index) => { return w.title === title; });
-    if (widget === void 0) {
-      return
-    }
-    if (args.name == 'text') {
-      let model = this._getModel(widget);
-      let newPath = this.getNewPath(model.path, args.newValue);
-      this.manager.rename(model.path, newPath).then(contents =>
-        this._setModel(widget, contents));
-    }
+  protected getTitleText(model: IContentsModel): string {
+    return model.name;
   }
 
   /**
@@ -328,49 +332,9 @@ abstract class AbstractFileHandler implements IMessageFilter {
 export
 class FileHandler extends AbstractFileHandler {
   /**
-   * Get file contents given a path.
-   *
-   * #### Notes
-   * Subclasses are free to use any or none of the information in
-   * the model.
+   * Get the options used to save the widget content.
    */
-  protected getContents(model: IContentsModel): Promise<IContentsModel> {
-    return this.manager.get(model.path, { type: 'file', format: 'text' });
-  }
-
-  /**
-   * Create the widget from an `IContentsModel`.
-   */
-  protected createWidget(model: IContentsModel): Widget {
-    let widget = new JupyterCodeMirrorWidget();
-    widget.title.text = model.path.split('/').pop();
-    return widget as Widget;
-  }
-
-  /**
-   * Populate a widget from `IContentsModel`.
-   *
-   * #### Notes
-   * Subclasses are free to use any or none of the information in
-   * the model.
-   */
-  protected setState(widget: Widget, model: IContentsModel): Promise<void> {
-    let mirror = widget as CodeMirrorWidget;
-    mirror.editor.getDoc().setValue(model.content);
-    loadModeByFileName(mirror.editor, model.name);
-    mirror.editor.on('change', () => {
-      let className = widget.title.className;
-      if (className.indexOf(DIRTY_CLASS) === -1) {
-        widget.title.className += ` ${DIRTY_CLASS}`;
-      }
-    });
-    return Promise.resolve(void 0);
-  }
-
-  /**
-   * Get the contents model for a widget.
-   */
-  protected getState(widget: Widget, model: IContentsModel): Promise<IContentsModel> {
+  protected getSaveOptions(widget: Widget, model: IContentsModel): Promise<IContentsOpts> {
     let name = model.path.split('/').pop();
     name = name.split('.')[0];
     let content = (widget as CodeMirrorWidget).editor.getDoc().getValue();
@@ -378,21 +342,71 @@ class FileHandler extends AbstractFileHandler {
                              type: 'file', format: 'text' });
   }
 
+  /**
+   * Create the widget from an `IContentsModel`.
+   */
+  protected createWidget(model: IContentsModel): Widget {
+    let widget = new CodeMirrorWidget();
+    widget.title.text = this.getTitleText(model);
+    return widget as Widget;
+  }
+
+  /**
+   * Populate a widget from an `IContentsModel`.
+   */
+  protected populateWidget(widget: Widget, model: IContentsModel): Promise<IContentsModel> {
+    let mirror = widget as CodeMirrorWidget;
+    mirror.editor.getDoc().setValue(model.content);
+    loadModeByFileName(mirror.editor, model.name);
+    mirror.editor.on('change', () => {
+      AbstractFileHandler.dirtyProperty.set(widget, true);
+    });
+    return Promise.resolve(model);
+  }
+
 }
 
 
 /**
- * A namespace for AbstractFileHandler private data.
+ * A namespace for AbstractFileHandler statics.
+ */
+export
+namespace AbstractFileHandler {
+  /**
+   * An attached property with the widget dirty state.
+   */
+  export
+  const dirtyProperty = new Property<Widget, boolean>({
+    name: 'dirty',
+    changed: Private.dirtyChanged
+  });
+}
+
+
+/** 
+ * A private namespace for AbstractFileHandler data.
  */
 namespace Private {
   /**
-   * An attached property with the widget path.
+   * An attached property with the widget model.
    */
   export
   const modelProperty = new Property<Widget, IContentsModel>({
     name: 'model',
     value: null
   });
+
+  /**
+   * A private function to handle dirty state change on a widget.
+   */
+  export
+  function dirtyChanged(widget: Widget, value: boolean) {
+    if (value) {
+      widget.title.className += ` ${DIRTY_CLASS}`;
+    } else {
+      widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+    }
+  }
 
   /**
    * A signal emitted when a file handler is activated.
