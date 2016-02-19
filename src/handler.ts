@@ -378,7 +378,14 @@ namespace AbstractFileHandler {
   export
   const dirtyProperty = new Property<Widget, boolean>({
     name: 'dirty',
-    changed: Private.dirtyChanged
+    value: false,
+    changed: (widget: Widget, oldValue: boolean, newValue: boolean) => {
+      if (newValue) {
+        widget.title.className += ` ${DIRTY_CLASS}`;
+      } else {
+        widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
+      }
+    }
   });
 }
 
@@ -395,18 +402,6 @@ namespace Private {
     name: 'model',
     value: null
   });
-
-  /**
-   * A private function to handle dirty state change on a widget.
-   */
-  export
-  function dirtyChanged(widget: Widget, value: boolean) {
-    if (value) {
-      widget.title.className += ` ${DIRTY_CLASS}`;
-    } else {
-      widget.title.className = widget.title.className.replace(DIRTY_CLASS, '');
-    }
-  }
 
   /**
    * A signal emitted when a file handler is activated.
