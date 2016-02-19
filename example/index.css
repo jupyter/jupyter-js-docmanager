@@ -25,8 +25,15 @@ body {
 }
 
 
-.p-TabBar-tab.jp-mod-dirty .p-TabBar-tabText:after {
-  content: '*';
+.p-TabBar-tab.p-mod-closable > .p-TabBar-tabCloseIcon:before {
+  font-family: FontAwesome;
+  content: '\f00d'; /* close */
+}
+
+
+.p-TabBar-tab.p-mod-closable.jp-mod-dirty > .p-TabBar-tabCloseIcon:before {
+  font-family: FontAwesome;
+  content: '\f069'; /* asterisk */
 }
 
 
@@ -124,12 +131,6 @@ body {
 
 .p-TabBar-tab.p-mod-closable > .p-TabBar-tabCloseIcon {
   margin-left: 4px;
-}
-
-
-.p-TabBar-tab.p-mod-closable > .p-TabBar-tabCloseIcon:before {
-  content: '\f00d';
-  font-family: FontAwesome;
 }
 
 
