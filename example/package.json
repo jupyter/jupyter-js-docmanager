@@ -5,6 +5,7 @@
     "jupyter-js-docmanager": "file:..",
     "jupyter-js-services": "^0.5.1",
     "jupyter-js-utils": "^0.3.1",
+    "phosphor-codemirror": "0.0.1",
     "phosphor-dockpanel": "^0.9.6",
     "phosphor-keymap": "^0.7.0"
   },
