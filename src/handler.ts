@@ -83,6 +83,17 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
   }
 
   /**
+   * Get the active widget.
+   *
+   * #### Notes
+   * This is a read-only property.  It will be `null` if there is no
+   * active widget.
+   */
+  get activeWidget(): T {
+    return this._activeWidget;
+  }
+
+  /**
    * A signal emitted when the file handler has finished loading the
    * contents of the widget.
    */
@@ -102,6 +113,26 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    */
   deactivate(): void {
     this.activeWidget = null;
+  }
+
+  /**
+   * Get the number of widgets managed by the handler.
+   *
+   * @returns The number of widgets managed by the handler.
+   */
+  widgetCount(): number {
+    return this._widgets.length;
+  }
+
+  /**
+   * Get the widget at the specified index.
+   *
+   * @param index - The index of the widget of interest.
+   *
+   * @returns The widget at the specified index, or `undefined`.
+   */
+  widgetAt(index: number): T {
+    return this._widgets[index];
   }
 
   /**
@@ -341,7 +372,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     }
   }
 
-  protected activeWidget: T = null;
+  private _activeWidget: T = null;
   private _manager: IContentsManager = null;
   private _widgets: T[] = [];
 }
