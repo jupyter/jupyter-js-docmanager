@@ -139,7 +139,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * Open a contents model and return a widget.
    */
   open(model: IContentsModel): T {
-    let widget = this._findWidgetByModel(model);
+    let widget = this.findWidgetByModel(model);
     if (!widget) {
       widget = this.createWidget(model);
       widget.title.closable = true;
@@ -357,7 +357,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
   /**
    * Find a widget given a model.
    */
-  private _findWidgetByModel(model: IContentsModel): T {
+  protected findWidgetByModel(model: IContentsModel): T {
     return arrays.find(this._widgets, widget => this._getModel(widget).path === model.path);
   }
 
