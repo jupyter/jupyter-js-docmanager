@@ -9,6 +9,7 @@
     "phosphor-keymap": "^0.7.0"
   },
   "scripts": {
+    "build": "cd .. && npm run build:example",
     "postinstall": "npm dedupe"
   }
 }

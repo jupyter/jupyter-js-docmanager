@@ -9,6 +9,7 @@
   },
   "files": [
     "../../typings/es6-promise.d.ts",
+    "../../typings/codemirror/codemirror.d.ts",
     "index.ts"
   ]
 }

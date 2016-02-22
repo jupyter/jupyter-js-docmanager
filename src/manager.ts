@@ -37,7 +37,7 @@ class DocumentManager {
   /**
    * Register a file handler.
    */
-  register(handler: AbstractFileHandler): void {
+  register(handler: AbstractFileHandler<Widget>): void {
     this._handlers.push(handler);
     handler.activated.connect(this._onActivated, this);
   }
@@ -45,7 +45,7 @@ class DocumentManager {
   /**
    * Register a default file handler.
    */
-  registerDefault(handler: AbstractFileHandler): void {
+  registerDefault(handler: AbstractFileHandler<Widget>): void {
     if (this._defaultHandler) {
       throw Error('Default handler already registered');
     }
@@ -62,7 +62,7 @@ class DocumentManager {
     }
     let path = model.path;
     let ext = '.' + path.split('.').pop();
-    let handlers: AbstractFileHandler[] = [];
+    let handlers: AbstractFileHandler<Widget>[] = [];
     // Look for matching file extensions.
     for (let h of this._handlers) {
       if (h.fileExtensions.indexOf(ext) !== -1) handlers.push(h);
@@ -114,13 +114,14 @@ class DocumentManager {
   /**
    * Close the active document.
    *
-   * returns A boolean indicating whether the widget was closed.
+   * returns A promise that resolves with a boolean indicating whether the
+      widget was closed.
    */
-  close(): boolean {
+  close(): Promise<boolean> {
     if (this._activeHandler) {
       return this._activeHandler.close();
     }
-    return false;
+    return Promise.resolve(false);
   }
 
   /**
@@ -133,7 +134,7 @@ class DocumentManager {
   /**
    * Open a file and emit an `openRequested` signal.
    */
-  private _open(handler: AbstractFileHandler, model: IContentsModel): Widget {
+  private _open(handler: AbstractFileHandler<Widget>, model: IContentsModel): Widget {
     let widget = handler.open(model);
     // Clear all other active widgets.
     for (let h of this._handlers) {
@@ -145,14 +146,14 @@ class DocumentManager {
   /**
    * A handler for handler activated signals.
    */
-  private _onActivated(handler: AbstractFileHandler) {
+  private _onActivated(handler: AbstractFileHandler<Widget>) {
     this._activeHandler = handler;
     for (let h of this._handlers) {
       if (h !== handler) h.deactivate();
     }
   }
 
-  private _handlers: AbstractFileHandler[] = [];
-  private _defaultHandler: AbstractFileHandler = null;
-  private _activeHandler: AbstractFileHandler = null;
+  private _handlers: AbstractFileHandler<Widget>[] = [];
+  private _defaultHandler: AbstractFileHandler<Widget> = null;
+  private _activeHandler: AbstractFileHandler<Widget> = null;
 }
