@@ -112,7 +112,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * Deactivate the handler.
    */
   deactivate(): void {
-    this.activeWidget = null;
+    this._activeWidget = null;
   }
 
   /**
@@ -151,9 +151,12 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     // Fetch the contents and populate the widget asynchronously.
     let opts = this.getFetchOptions(model);
     this.manager.get(model.path, opts).then(contents => {
+      widget.title.text = this.getTitleText(model);
       return this.populateWidget(widget, contents);
-    }).then(() => this.finished.emit(model));
-
+    }).then(() => {
+      this.clearDirty(widget);
+      this.finished.emit(model);
+    });
     return widget;
   }
 
@@ -240,7 +243,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     let index = this._widgets.indexOf(widget);
     this._widgets.splice(index, 1);
     if (widget === this.activeWidget) {
-      this.activeWidget = null;
+      this._activeWidget = null;
     }
     return Promise.resolve(true);
   }
@@ -252,7 +255,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     for (let w of this._widgets) {
       w.close();
     }
-    this.activeWidget = null;
+    this._activeWidget = null;
   }
 
   /**
@@ -367,7 +370,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     let widget = arrays.find(this._widgets,
       w => w.isVisible && w.node.contains(target));
     if (widget) {
-      this.activeWidget = widget;
+      this._activeWidget = widget;
       if (!prev) this.activated.emit(void 0);
     }
   }
