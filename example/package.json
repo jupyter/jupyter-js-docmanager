@@ -2,6 +2,7 @@
   "private": true,
   "name": "jupyter-docmanager-example",
   "dependencies": {
+    "codemirror": "^5.12.0",
     "jupyter-js-docmanager": "file:..",
     "jupyter-js-services": "^0.5.1",
     "jupyter-js-utils": "^0.3.1",
