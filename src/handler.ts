@@ -83,6 +83,17 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
   }
 
   /**
+   * Get the active widget.
+   *
+   * #### Notes
+   * This is a read-only property.  It will be `null` if there is no
+   * active widget.
+   */
+  get activeWidget(): T {
+    return this._activeWidget;
+  }
+
+  /**
    * A signal emitted when the file handler has finished loading the
    * contents of the widget.
    */
@@ -101,14 +112,34 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * Deactivate the handler.
    */
   deactivate(): void {
-    this.activeWidget = null;
+    this._activeWidget = null;
+  }
+
+  /**
+   * Get the number of widgets managed by the handler.
+   *
+   * @returns The number of widgets managed by the handler.
+   */
+  widgetCount(): number {
+    return this._widgets.length;
+  }
+
+  /**
+   * Get the widget at the specified index.
+   *
+   * @param index - The index of the widget of interest.
+   *
+   * @returns The widget at the specified index, or `undefined`.
+   */
+  widgetAt(index: number): T {
+    return this._widgets[index];
   }
 
   /**
    * Open a contents model and return a widget.
    */
   open(model: IContentsModel): T {
-    let widget = this._findWidgetByModel(model);
+    let widget = this.findWidgetByModel(model);
     if (!widget) {
       widget = this.createWidget(model);
       widget.title.closable = true;
@@ -120,9 +151,12 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     // Fetch the contents and populate the widget asynchronously.
     let opts = this.getFetchOptions(model);
     this.manager.get(model.path, opts).then(contents => {
+      widget.title.text = this.getTitleText(model);
       return this.populateWidget(widget, contents);
-    }).then(() => this.finished.emit(model));
-
+    }).then(() => {
+      this.clearDirty(widget);
+      this.finished.emit(model);
+    });
     return widget;
   }
 
@@ -209,7 +243,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     let index = this._widgets.indexOf(widget);
     this._widgets.splice(index, 1);
     if (widget === this.activeWidget) {
-      this.activeWidget = null;
+      this._activeWidget = null;
     }
     return Promise.resolve(true);
   }
@@ -221,7 +255,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     for (let w of this._widgets) {
       w.close();
     }
-    this.activeWidget = null;
+    this._activeWidget = null;
   }
 
   /**
@@ -323,7 +357,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
   /**
    * Find a widget given a model.
    */
-  private _findWidgetByModel(model: IContentsModel): T {
+  protected findWidgetByModel(model: IContentsModel): T {
     return arrays.find(this._widgets, widget => this._getModel(widget).path === model.path);
   }
 
@@ -336,12 +370,12 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
     let widget = arrays.find(this._widgets,
       w => w.isVisible && w.node.contains(target));
     if (widget) {
-      this.activeWidget = widget;
+      this._activeWidget = widget;
       if (!prev) this.activated.emit(void 0);
     }
   }
 
-  protected activeWidget: T = null;
+  private _activeWidget: T = null;
   private _manager: IContentsManager = null;
   private _widgets: T[] = [];
 }
