@@ -185,7 +185,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * This clears the dirty state of the widget after a successful save.
    */
   save(widget?: T): Promise<IContentsModel> {
-    widget = this._resolveWidget(widget);
+    widget = this.resolveWidget(widget);
     if (!widget) {
       return Promise.resolve(void 0);
     }
@@ -209,7 +209,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * This clears the dirty state of the widget after a successful revert.
    */
   revert(widget?: T): Promise<IContentsModel> {
-    widget = this._resolveWidget(widget);
+    widget = this.resolveWidget(widget);
     if (!widget) {
       return Promise.resolve(void 0);
     }
@@ -231,7 +231,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * returns A boolean indicating whether the widget was closed.
    */
   close(widget?: T): Promise<boolean> {
-    widget = this._resolveWidget(widget);
+    widget = this.resolveWidget(widget);
     if (!widget) {
       return Promise.resolve(false);
     }
@@ -262,28 +262,28 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
    * Get whether a widget is dirty (defaults to current active widget).
    */
   isDirty(widget?: T): boolean {
-    return Private.dirtyProperty.get(this._resolveWidget(widget));
+    return Private.dirtyProperty.get(this.resolveWidget(widget));
   }
 
   /**
    * Set the dirty state of a widget (defaults to current active widget).
    */
   setDirty(widget?: T): void {
-    Private.dirtyProperty.set(this._resolveWidget(widget), true);
+    Private.dirtyProperty.set(this.resolveWidget(widget), true);
   }
 
   /**
    * Clear the dirty state of a widget (defaults to current active widget).
    */
   clearDirty(widget?: T): void {
-    Private.dirtyProperty.set(this._resolveWidget(widget), false);
+    Private.dirtyProperty.set(this.resolveWidget(widget), false);
   }
 
   /**
    * Filter messages on the widget.
    */
   filterMessage(handler: IMessageHandler, msg: Message): boolean {
-    let widget = this._resolveWidget(handler as T);
+    let widget = this.resolveWidget(handler as T);
     if (msg.type == 'close-request' && widget) {
       this.close(widget);
       return true;
@@ -346,7 +346,7 @@ abstract class AbstractFileHandler<T extends Widget> implements IMessageFilter {
   /**
    * Resolve a given widget.
    */
-  private _resolveWidget(widget: T): T {
+  protected resolveWidget(widget: T): T {
     widget = widget || this.activeWidget;
     if (this._widgets.indexOf(widget) === -1) {
       return;
