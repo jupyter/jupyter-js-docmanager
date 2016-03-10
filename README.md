@@ -1,5 +1,5 @@
-Jupyter JS Docmanager
-=====================
+DEPRECATED - Jupyter JS Docmanager
+==================================
 
 Document manager for Jupyter.
 
